@@ -60,6 +60,8 @@ namespace airlib
         //non-base interface specific to MavLinKDroneController
         void initialize(const AirSimSettings::MavLinkConnectionInfo& connection_info, const SensorCollection* sensors, bool is_simulation)
         {
+            addStatusMessage(std::string("Setting up model: ") + connection_info_.model);
+
             connection_info_ = connection_info;
             sensors_ = sensors;
             is_simulation_mode_ = is_simulation;

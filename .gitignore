@@ -279,6 +279,8 @@ ModelManifest.xml
 /MavLinkCom/lib/libMavLinkCom.a
 /Unreal/Plugins/AirSim/Source/AirLib/
 /Unreal/Environments/BlocksV2/Plugins/AirSim/
+/Unreal/Environments/BlocksV2/.ignore
+/Unreal/Environments/BlocksV2/BlocksV2.code-workspace
 /enc_temp_folder
 /cmake/MavLinkCom/MavLinkTest/MavLinkTest
 /cmake/MavLinkCom/lib/libMavLinkCom.a
