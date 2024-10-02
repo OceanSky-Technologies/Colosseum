@@ -13,7 +13,6 @@ namespace msr
 {
 namespace airlib
 {
-
     class Px4MultiRotorParams : public MultiRotorParams
     {
     public:
@@ -38,20 +37,23 @@ namespace airlib
         {
             auto& params = getParams();
 
-            if (connection_info_.model == "Blacksheep") {
+            if (common_utils::iequals(connection_info_.model, "Blacksheep")) {
                 setupFrameBlacksheep(params);
             }
-            else if (connection_info_.model == "Flamewheel") {
+            else if (common_utils::iequals(connection_info_.model, "Flamewheel")) {
                 setupFrameFlamewheel(params);
             }
-            else if (connection_info_.model == "FlamewheelFLA") {
+            else if (common_utils::iequals(connection_info_.model, "FlamewheelFLA")) {
                 setupFrameFlamewheelFLA(params);
             }
-            else if (connection_info_.model == "Hexacopter") {
+            else if (common_utils::iequals(connection_info_.model, "Hexacopter")) {
                 setupFrameGenericHex(params);
             }
-            else if (connection_info_.model == "Octocopter") {
+            else if (common_utils::iequals(connection_info_.model, "Octocopter")) {
                 setupFrameGenericOcto(params);
+            }
+            else if (common_utils::iequals(connection_info_.model, "Skywinger")) {
+                setupFrameSkywinger(params);
             }
             else //Generic
                 setupFrameGenericQuad(params);

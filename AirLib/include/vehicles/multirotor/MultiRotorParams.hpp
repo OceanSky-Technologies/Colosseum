@@ -5,10 +5,14 @@
 #define msr_airlib_MultiRotorParameters_hpp
 
 #include "common/Common.hpp"
+#include "common/common_utils/AngleUtils.hpp"
 #include "RotorParams.hpp"
 #include "sensors/SensorCollection.hpp"
 #include "sensors/SensorFactory.hpp"
 #include "vehicles/multirotor/api/MultirotorApiBase.hpp"
+
+#include <optional>
+#include <fstream>
 
 namespace msr
 {
@@ -25,9 +29,8 @@ namespace airlib
             Vector3r normal;
             RotorTurningDirection direction;
 
-            RotorPose()
-            {
-            }
+            RotorPose() {}
+
             RotorPose(const Vector3r& position_val, const Vector3r& normal_val, RotorTurningDirection direction_val)
                 : position(position_val), normal(normal_val), direction(direction_val)
             {
@@ -275,14 +278,44 @@ namespace airlib
 
         /// Initialize the rotor_poses given the rotor_count, the arm lengths and the arm angles (relative to forwards vector).
         /// Also provide the direction you want to spin each rotor and the z-offset of the rotors relative to the center of gravity.
-        static void initializeRotors(vector<RotorPose>& rotor_poses, uint rotor_count, real_T arm_lengths[], real_T arm_angles[], RotorTurningDirection rotor_directions[], real_T rotor_z /* z relative to center of gravity */)
+        static void initializeRotors(
+            vector<RotorPose>& rotor_poses,
+            uint rotor_count,
+            real_T arm_lengths[],
+            real_T arm_angles[],
+            RotorTurningDirection rotor_directions[],
+            real_T rotor_z[], /* z relative to center of gravity */
+            std::optional<std::vector<Vector3r>> rotor_rotation_angles = std::nullopt /* array of additional rotation angles for each rotor */
+            )
         {
-            Vector3r unit_z(0, 0, -1); //NED frame
             rotor_poses.clear();
+
             for (uint i = 0; i < rotor_count; i++) {
+                Vector3r unit_z(0, 0, -1); //NED frame
                 Quaternionr angle(AngleAxisr(arm_angles[i] * M_PIf / 180, unit_z));
-                rotor_poses.emplace_back(VectorMath::rotateVector(Vector3r(0, arm_lengths[i], rotor_z), angle, true),
-                                         unit_z,
+                Vector3r position = VectorMath::rotateVector(Vector3r(arm_lengths[0], 0, rotor_z[i]), angle, true);
+
+                Vector3r normal(0, 0, -1); //NED frame
+                if (rotor_rotation_angles) {
+                    // Define the rotation angles (in radians)
+                    float roll = common_utils::degToRad(rotor_rotation_angles.value()[i][0]);
+                    float pitch = common_utils::degToRad(rotor_rotation_angles.value()[i][1]);
+                    float yaw = common_utils::degToRad(rotor_rotation_angles.value()[i][2]);
+
+                    // Convert roll, pitch and yaw (in radians) to AngleAxis
+                    Eigen::AngleAxisf pitchAngle(pitch, Eigen::Vector3f::UnitY());
+                    Eigen::AngleAxisf rollAngle(roll, Eigen::Vector3f::UnitX());
+                    Eigen::AngleAxisf yawAngle(yaw, Eigen::Vector3f::UnitZ());
+
+                    // Create a combined quaternion
+                    Eigen::Quaternionf q = yawAngle * pitchAngle * rollAngle;
+
+                    // Apply the rotation to the vector
+                    normal = q * normal;
+                }
+
+                rotor_poses.emplace_back(position,
+                                         normal,
                                          rotor_directions[i]);
             }
         }
@@ -307,6 +340,115 @@ namespace airlib
 
         // Some Frame types which can be used by different firmwares
         // Specific frame configurations, modifications can be done in the Firmware Params
+
+        void setupFrameSkywinger(Params& params)
+        {
+            /* Note: rotor_poses are built in this order:
+                x-axis
+            (2)   |   (0)
+                  |
+            ------------ y-axis
+                  |
+            (1)   |   (3)
+            */
+
+            params.rotor_count = 4;
+            
+            const real_T motor0_x{0.24f};
+            const real_T motor0_y{0.48f};
+            const real_T motor0_z{0.05f};
+            const Vector3r motor0_rotation{0.0f, -30.0f, 0.0f};
+            const RotorTurningDirection motor0_direction{RotorTurningDirection::RotorTurningDirectionCCW};
+            
+            const real_T motor1_x{-0.27f};
+            const real_T motor1_y{-0.48f};
+            const real_T motor1_z{-0.05f};
+            const Vector3r motor1_rotation{0.0f, -30.0f, 0.0f};
+            const RotorTurningDirection motor1_direction{RotorTurningDirection::RotorTurningDirectionCCW};
+            
+            const real_T motor2_x{0.24f};
+            const real_T motor2_y{-0.48f};
+            const real_T motor2_z{0.05f};
+            const Vector3r motor2_rotation{0.0f, -30.0f, 0.0f};
+            const RotorTurningDirection motor2_direction{RotorTurningDirection::RotorTurningDirectionCW};
+            
+            const real_T motor3_x{-0.27f};
+            const real_T motor3_y{0.48f};
+            const real_T motor3_z{-0.05f};
+            const Vector3r motor3_rotation{0.0f, -30.0f, 0.0f};
+            const RotorTurningDirection motor3_direction{RotorTurningDirection::RotorTurningDirectionCW};
+
+            // calculate arm lengths (diagonal from COG)
+            std::vector<real_T> arm_lengths{
+                static_cast<real_T>(std::sqrt(std::pow(motor0_x, 2)+std::pow(motor0_y, 2))),
+                static_cast<real_T>(std::sqrt(std::pow(motor1_x, 2)+std::pow(motor1_y, 2))),
+                static_cast<real_T>(std::sqrt(std::pow(motor2_x, 2)+std::pow(motor2_y, 2))),
+                static_cast<real_T>(std::sqrt(std::pow(motor3_x, 2)+std::pow(motor3_y, 2)))
+            };
+            
+            // note: the Forward vector is actually the "x" axis, and the AngleAxisr rotation is pointing down and is left handed, so this means the rotation
+            // is counter clockwise, so the vector (arm_lengths[i], 0) is the X-axis, so the CCW rotations to position each arm correctly are listed below:
+            // See measurements here: http://diydrones.com/profiles/blogs/arducopter-tbs-discovery-style (angles reversed because we are doing CCW rotation)
+            std::vector<real_T> arm_angles{
+                static_cast<real_T>(-1.0*common_utils::radToDeg(std::atan(motor0_x/motor0_y))),
+                static_cast<real_T>(90.0f + common_utils::radToDeg(std::atan(motor1_x/motor1_y))),
+                static_cast<real_T>(-1.0*common_utils::radToDeg(std::atan(motor2_x/motor2_y))),
+                static_cast<real_T>(-90.0f + common_utils::radToDeg(std::atan(motor3_x/motor3_y))),
+            };
+
+            std::vector<RotorTurningDirection> rotor_directions{
+                motor0_direction,
+                motor1_direction,
+                motor2_direction,
+                motor3_direction
+            };
+            
+            std::vector<real_T> rotor_z{
+                motor0_z,
+                motor1_z,
+                motor2_z,
+                motor3_z
+            };
+            
+            std::vector<Vector3r> rotor_rotation{
+                motor0_rotation,
+                motor1_rotation,
+                motor2_rotation,
+                motor3_rotation
+            };
+
+            //set up mass
+            //this has to be between max_thrust*rotor_count/10 (1.6kg using default parameters in RotorParams.hpp) and (idle throttle percentage)*max_thrust*rotor_count/10 (0.8kg using default parameters and SimpleFlight)
+            //any value above the maximum would result in the motors not being able to lift the body even at max thrust,
+            //and any value below the minimum would cause the drone to fly upwards on idling throttle (50% of the max throttle if using SimpleFlight)
+            //Note that the default idle throttle percentage is 50% if you are using SimpleFlight
+            params.mass = 5.5f;
+
+            real_T motor_assembly_weight = 0.100f; // motor is 77g heavy. Added some weight for props and motor mounting
+            real_T box_mass = params.mass - params.rotor_count * motor_assembly_weight;
+
+            // Master Airscrew MR 9x4.5
+            params.rotor_params.max_rpm = 12000.0f;
+
+            // using rotor_param default, but if you want to change any of the rotor_params, call calculateMaxThrust() to recompute the max_thrust
+            // given new thrust coefficients, motor max_rpm and propeller diameter.
+            params.rotor_params.calculateMaxThrust();
+
+            // configure max_thrust/max_torque manually now because we don't know precise C_T/C_P values
+            params.rotor_params.max_thrust = 24.0f;
+            params.rotor_params.max_torque = 0.368f; 
+
+            //set up dimensions of core body box or abdomen (not including arms).
+            params.body_box.x() = 0.50f;
+            params.body_box.y() = 0.15f;
+            params.body_box.z() = 0.10f;
+
+            // compute rotor poses
+            initializeRotors(params.rotor_poses, params.rotor_count, arm_lengths.data(), arm_angles.data(), rotor_directions.data(), rotor_z.data(), rotor_rotation);
+ 
+            // compute inertia matrix
+            computeInertiaMatrix(params.inertia, params.body_box, params.rotor_poses, box_mass, motor_assembly_weight);
+        }
 
         void setupFrameGenericQuad(Params& params)
         {

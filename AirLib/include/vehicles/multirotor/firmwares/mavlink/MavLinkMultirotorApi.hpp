@@ -26,6 +26,7 @@
 #include "common/VectorMath.hpp"
 #include "common/common_utils/FileSystem.hpp"
 #include "common/common_utils/SmoothingFilter.hpp"
+#include "common/common_utils/StringUtils.hpp"
 #include "common/common_utils/Timer.hpp"
 #include "physics/World.hpp"
 #include "sensors/SensorCollection.hpp"
@@ -60,7 +61,7 @@ namespace airlib
         //non-base interface specific to MavLinKDroneController
         void initialize(const AirSimSettings::MavLinkConnectionInfo& connection_info, const SensorCollection* sensors, bool is_simulation)
         {
-            addStatusMessage(std::string("Setting up model: ") + connection_info_.model);
+            addStatusMessage(std::string("Setting up model: ") + connection_info.model);
 
             connection_info_ = connection_info;
             sensors_ = sensors;
