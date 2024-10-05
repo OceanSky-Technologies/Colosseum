@@ -59,6 +59,11 @@ namespace airlib
                 setupFrameGenericQuad(params);
         }
 
+        static inline const AirSimSettings::MavLinkConnectionInfo& getConnectionInfo(const AirSimSettings::MavLinkVehicleSetting& vehicle_setting)
+        {
+            return vehicle_setting.connection_info;
+        }
+
     protected:
         virtual const SensorFactory* getSensorFactory() const override
         {
@@ -66,10 +71,6 @@ namespace airlib
         }
 
     private:
-        static const AirSimSettings::MavLinkConnectionInfo& getConnectionInfo(const AirSimSettings::MavLinkVehicleSetting& vehicle_setting)
-        {
-            return vehicle_setting.connection_info;
-        }
 
     private:
         AirSimSettings::MavLinkConnectionInfo connection_info_;

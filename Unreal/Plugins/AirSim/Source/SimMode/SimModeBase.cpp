@@ -13,10 +13,14 @@
 #include "common/AirSimSettings.hpp"
 #include "common/ScalableClock.hpp"
 #include "common/SteppableClock.hpp"
+#include "common/common_utils/AngleUtils.hpp"
+#include "common/common_utils/StringUtils.hpp"
 #include "SimJoyStick/SimJoyStick.h"
 #include "common/EarthCelestial.hpp"
 #include "sensors/lidar/LidarSimple.hpp"
 #include "sensors/distance/DistanceSimple.hpp"
+
+#include "vehicles/multirotor/firmwares/mavlink/Px4MultiRotorParams.hpp"
 
 #include "Weather/WeatherLib.h"
 
@@ -155,6 +159,33 @@ void ASimModeBase::BeginPlay()
 
     loading_screen_widget_->AddToViewport();
     loading_screen_widget_->SetVisibility(ESlateVisibility::Hidden);
+
+    // skywinger model has the fpv camera pitched by -30 degrees
+    for (auto& [vehicle, vehicle_setting] : getSettings().vehicles) {
+        // TODO: also allow this for SimpleFlight vehicle types - these don't have a model name...
+
+        if (vehicle_setting->vehicle_type != AirSimSettings::kVehicleTypePX4)
+            continue;
+
+        const auto connection_info = msr::airlib::Px4MultiRotorParams::getConnectionInfo(*static_cast<const msr::airlib::AirSimSettings::MavLinkVehicleSetting*>(vehicle_setting.get()));
+
+        if (common_utils::toLower(connection_info.model) == common_utils::toLower("skywinger")) {
+            float roll = 0.0f;
+            float pitch = common_utils::degToRad(-30.0f);
+            float yaw = 0.0f;
+            Eigen::Quaternion<float, Eigen::DontAlign> q =
+                Eigen::AngleAxisf(roll, Eigen::Vector3f::UnitX())
+                * Eigen::AngleAxisf(pitch, Eigen::Vector3f::UnitY())
+                * Eigen::AngleAxisf(yaw, Eigen::Vector3f::UnitZ());
+            const msr::airlib::Pose pose(Eigen::Vector3f::Zero(), q);
+            const msr::airlib::CameraDetails camera_details("0", "", false); // id 0 is fpv_camera
+
+            auto* cam = getCamera(camera_details);
+            if (cam) {
+                cam->setCameraPose(pose);
+            }
+        }
+    }
 }
 
 const NedTransform& ASimModeBase::getGlobalNedTransform()

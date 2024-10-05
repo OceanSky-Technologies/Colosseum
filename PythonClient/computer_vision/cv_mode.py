@@ -16,7 +16,7 @@ client = airsim.VehicleClient()
 client.confirmConnection()
 
 airsim.wait_key('Press any key to set camera-0 gimbal to 15-degree pitch')
-camera_pose = airsim.Pose(airsim.Vector3r(0, 0, 0), airsim.to_quaternion(math.radians(15), 0, 0)) #radians
+camera_pose = airsim.Pose(airsim.Vector3r(0, 0, 0), airsim.to_quaternion(math.radians(-30), 0, 0)) #radians
 client.simSetCameraPose("0", camera_pose)
 
 airsim.wait_key('Press any key to get camera parameters')

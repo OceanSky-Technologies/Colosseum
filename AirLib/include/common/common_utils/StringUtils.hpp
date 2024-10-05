@@ -7,7 +7,7 @@
 
 namespace common_utils
 {
-std::string toLower(const std::string& str) {
+inline std::string toLower(const std::string& str) {
     std::string result = str;
     std::transform(result.begin(), result.end(), result.begin(), [](unsigned char c) { 
         return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); 
@@ -15,7 +15,7 @@ std::string toLower(const std::string& str) {
     return result;
 }
 
-bool iequals(const std::string& a, const std::string& b)
+inline bool iequals(const std::string& a, const std::string& b)
 {
     return toLower(a) == toLower(b);
 }
