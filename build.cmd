@@ -28,16 +28,16 @@ set buildMode=""
 :loop
 IF NOT "%1"=="" (
     IF "%1"=="--Debug" (
-        set buildMode="Debug"
+        set buildMode=Debug
         SHIFT
     ) ELSE IF "%1"=="--Release" (
-        set buildMode="Release"
+        set buildMode=Release
         SHIFT
     ) ELSE IF "%1"=="--no-full-poly-car" (
-        set noFullPolyCar="y"
+        set noFullPolyCar=y
         SHIFT
     ) ELSE IF "%1"=="--RelWithDebInfo" (
-        set buildMode="RelWithDebInfo"
+        set buildMode=RelWithDebInfo
         SHIFT
     ) ELSE (
         echo Unknown command line parameter: %1
@@ -121,25 +121,26 @@ IF NOT EXIST external\rpclib\%RPC_VERSION_FOLDER% (
 REM //---------- Build rpclib ------------
 IF NOT EXIST external\rpclib\%RPC_VERSION_FOLDER%\build mkdir external\rpclib\%RPC_VERSION_FOLDER%\build
 cd external\rpclib\%RPC_VERSION_FOLDER%\build
+
 CALL :printHeader, "Configuring CMake rpclib"
 cmake -G"Visual Studio 17 2022" ..
 ECHO(
 
 if %buildMode% == "" (
     CALL :printHeader, "Building rpclib - Configuration = Release"
-    cmake --build . --config Release
+    cmake --build . --config Release --parallel %NUMBER_OF_PROCESSORS%
     ECHO(
 
     CALL :printHeader, "Building rpclib - Configuration = Debug"
-    cmake --build . --config Debug
+    cmake --build . --config Debug --parallel %NUMBER_OF_PROCESSORS%
     ECHO(
 
     CALL :printHeader, "Building rpclib - Configuration = RelWithDebInfo"
-    cmake --build . --config RelWithDebInfo
+    cmake --build . --config RelWithDebInfo --parallel %NUMBER_OF_PROCESSORS%
     ECHO(
 ) else (
     CALL :printHeader, "Building rpclib - Configuration = %buildMode%"
-    cmake --build . --config %buildMode%
+    cmake --build . --config %buildMode% --parallel %NUMBER_OF_PROCESSORS%
     ECHO(
 )
 
@@ -223,22 +224,22 @@ ECHO(
 REM //---------- now we have all dependencies to compile AirSim.sln which will also compile MavLinkCom ----------
 if %buildMode% == "" (
     CALL :printHeader, "Building AirSim.sln Configuration = Debug"
-    msbuild -maxcpucount:12 /p:Platform=x64 /p:Configuration=Debug AirSim.sln
+    msbuild -maxcpucount:%NUMBER_OF_PROCESSORS% /p:Platform=x64 /p:Configuration=Debug AirSim.sln
     ECHO(   
     if ERRORLEVEL 1 goto :buildfailed
 
     CALL :printHeader, "Building AirSim.sln Configuration = Release"
-    msbuild -maxcpucount:12 /p:Platform=x64 /p:Configuration=Release AirSim.sln 
+    msbuild -maxcpucount:%NUMBER_OF_PROCESSORS% /p:Platform=x64 /p:Configuration=Release AirSim.sln 
     ECHO(   
     if ERRORLEVEL 1 goto :buildfailed
 
     CALL :printHeader, "Building AirSim.sln Configuration = RelWithDebInfo"
-    msbuild -maxcpucount:12 /p:Platform=x64 /p:Configuration=RelWithDebInfo AirSim.sln 
+    msbuild -maxcpucount:%NUMBER_OF_PROCESSORS% /p:Platform=x64 /p:Configuration=RelWithDebInfo AirSim.sln 
     ECHO(   
     if ERRORLEVEL 1 goto :buildfailed
 ) else (
     CALL :printHeader, "Building AirSim.sln Configuration = %buildMode%"
-    msbuild -maxcpucount:12 /p:Platform=x64 /p:Configuration=%buildMode% AirSim.sln
+    msbuild -maxcpucount:%NUMBER_OF_PROCESSORS% /p:Platform=x64 /p:Configuration=%buildMode% AirSim.sln
     ECHO(   
     if ERRORLEVEL 1 goto :buildfailed
 )
